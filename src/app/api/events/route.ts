@@ -27,6 +27,18 @@ export async function POST(request: Request) {
 
     const clientIP = await getClientIP();
 
+    // Server-side bot detection: block known bot IP ranges
+    const botIpPrefixes = ["66.249.", "64.233.", "72.14.", "209.85.", "216.239.", "40.77.", "157.55.", "207.46.", "13.66.", "52.167."];
+    if (botIpPrefixes.some((prefix) => clientIP.startsWith(prefix))) {
+      return Response.json({ ok: true, filtered: "bot_ip" }, { headers: CORS_HEADERS });
+    }
+
+    // Check user-agent header for bots
+    const ua = request.headers.get("user-agent") || "";
+    if (/bot|crawl|spider|slurp|googlebot|bingbot/i.test(ua)) {
+      return Response.json({ ok: true, filtered: "bot_ua" }, { headers: CORS_HEADERS });
+    }
+
     if (visitor) {
       await upsertVisitor({
         id: visitorId,
