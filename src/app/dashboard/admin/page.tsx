@@ -30,8 +30,11 @@ interface Visitor {
   phone: string | null;
   ip: string;
   is_logged_in: number;
+  shopify_customer_id: string | null;
   shopify_orders_count: number;
+  shopify_total_spent: string;
   customer_tier: string;
+  customer_name: string;
   converted: number;
   engagements_shown: string[];
 }
@@ -246,7 +249,11 @@ export default function AdminPage() {
                     {filteredVisitors.map((v) => (
                       <tr key={v.id} className="border-b border-border/50 hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3">
-                          <div className="font-mono text-xs text-gray-700">{v.id.substring(0, 20)}...</div>
+                          {v.customer_name ? (
+                            <div className="font-semibold text-sm text-foreground">{v.customer_name}</div>
+                          ) : (
+                            <div className="font-mono text-xs text-gray-700">{v.id.substring(0, 20)}...</div>
+                          )}
                           <div className="flex items-center gap-1 mt-0.5">
                             <Fingerprint className="w-3 h-3 text-gray-400" />
                             <span className="text-[10px] text-gray-400">{v.fingerprint_id?.substring(0, 12) || "—"}... ({Math.round(v.confidence * 100)}%)</span>
@@ -257,7 +264,12 @@ export default function AdminPage() {
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.is_returning ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"}`}>
                             {v.is_returning ? `Return #${v.visit_count}` : "New"}
                           </span>
-                          {v.is_logged_in ? <span className="text-[10px] ml-1 text-amber-600">Shopify</span> : null}
+                          {v.is_logged_in ? (
+                            <div className="mt-0.5">
+                              <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">Shopify #{v.shopify_customer_id}</span>
+                              {v.shopify_orders_count > 0 && <span className="text-[10px] text-gray-400 ml-1">{v.shopify_orders_count} orders • ₹{v.shopify_total_spent}</span>}
+                            </div>
+                          ) : null}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -312,6 +324,16 @@ export default function AdminPage() {
               <h3 className="font-semibold text-foreground">Visitor Profile</h3>
               {journey.visitor && (
                 <div className="space-y-3 text-sm">
+                  {journey.visitor.customer_name && (
+                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                      <p className="text-xs text-primary font-medium">Shopify Customer</p>
+                      <p className="text-lg font-bold text-foreground">{journey.visitor.customer_name}</p>
+                      {journey.visitor.shopify_customer_id && <p className="text-xs text-gray-400">ID: #{journey.visitor.shopify_customer_id}</p>}
+                      {journey.visitor.shopify_orders_count > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">{journey.visitor.shopify_orders_count} orders • ₹{journey.visitor.shopify_total_spent} total spent</p>
+                      )}
+                    </div>
+                  )}
                   <div>
                     <p className="text-xs text-gray-400">ID</p>
                     <p className="font-mono text-xs break-all">{journey.visitor.id}</p>

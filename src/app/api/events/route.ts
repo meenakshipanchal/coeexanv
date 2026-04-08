@@ -1,4 +1,5 @@
 import { addEvent, upsertVisitor } from "@/lib/db";
+import { getCustomerById, storeFingerprintInMetafield } from "@/lib/shopify";
 import { headers } from "next/headers";
 
 const CORS_HEADERS = {
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
       });
 
       if (data?.shopifyCustomerId) {
+        const shopifyId = data.shopifyCustomerId as string;
         const ordersCount = (data.ordersCount as number) || 0;
         const totalSpent = (data.totalSpent as number) || 0;
         let tier: "new" | "returning" | "loyal" | "vip" = "new";
@@ -62,13 +64,33 @@ export async function POST(request: Request) {
         else if (ordersCount >= 3) tier = "loyal";
         else if (ordersCount >= 1) tier = "returning";
 
+        // Fetch real customer name from Shopify Admin API
+        let customerName = "";
+        let customerEmail = "";
+        let customerPhone = "";
+        const shopifyCustomer = await getCustomerById(shopifyId);
+        if (shopifyCustomer) {
+          customerName = shopifyCustomer.name;
+          customerEmail = shopifyCustomer.email;
+          customerPhone = shopifyCustomer.phone;
+
+          // Store fingerprint in customer metafield for cross-device recognition
+          const fpId = visitor?.fingerprintId;
+          if (fpId) {
+            storeFingerprintInMetafield(shopifyId, fpId).catch(() => {});
+          }
+        }
+
         await upsertVisitor({
           id: visitorId,
-          shopify_customer_id: data.shopifyCustomerId as string,
+          shopify_customer_id: shopifyId,
           shopify_orders_count: ordersCount,
           shopify_total_spent: totalSpent,
           customer_tier: tier,
           is_logged_in: true,
+          customer_name: customerName,
+          email: customerEmail || visitor?.email || null,
+          phone: customerPhone || visitor?.phone || null,
         });
       }
     }

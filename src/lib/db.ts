@@ -48,6 +48,9 @@ export interface VisitorRow {
   customer_tier: "new" | "returning" | "loyal" | "vip";
   engagements_shown: string[];
   converted: boolean;
+  customer_name: string;
+  city: string;
+  region: string;
 }
 
 export interface EventRow {
@@ -74,8 +77,8 @@ export async function upsertVisitor(data: Partial<VisitorRow> & { id: string }) 
       source, device, entry_page, current_page, pages,
       email, phone, ip, is_suspicious, is_logged_in,
       shopify_customer_id, shopify_orders_count, shopify_total_spent,
-      customer_tier, engagements_shown, converted
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      customer_tier, engagements_shown, converted, customer_name
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       fingerprint_id = COALESCE(VALUES(fingerprint_id), fingerprint_id),
       confidence = IF(VALUES(confidence) > 0, VALUES(confidence), confidence),
@@ -105,7 +108,8 @@ export async function upsertVisitor(data: Partial<VisitorRow> & { id: string }) 
       shopify_total_spent = GREATEST(VALUES(shopify_total_spent), shopify_total_spent),
       customer_tier = VALUES(customer_tier),
       engagements_shown = VALUES(engagements_shown),
-      converted = VALUES(converted) OR converted`,
+      converted = VALUES(converted) OR converted,
+      customer_name = COALESCE(NULLIF(VALUES(customer_name), ''), customer_name)`,
     [
       data.id,
       data.fingerprint_id || "",
@@ -139,6 +143,7 @@ export async function upsertVisitor(data: Partial<VisitorRow> & { id: string }) 
       data.customer_tier || "new",
       JSON.stringify(data.engagements_shown || []),
       data.converted ?? false,
+      data.customer_name || "",
     ]
   );
 }
