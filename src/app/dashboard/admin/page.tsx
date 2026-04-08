@@ -289,24 +289,24 @@ export default function AdminPage() {
             {/* Visitor Table */}
             <div className="bg-card-bg rounded-xl border border-border overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-xs">
                   <thead>
                     <tr className="text-left text-gray-500 border-b border-border bg-gray-50/50">
-                      <th className="px-4 py-3 font-medium">Visitor</th>
-                      <th className="px-4 py-3 font-medium">Type</th>
-                      <th className="px-4 py-3 font-medium">Intent</th>
-                      <th className="px-4 py-3 font-medium">Source</th>
-                      <th className="px-4 py-3 font-medium">Pages</th>
-                      <th className="px-4 py-3 font-medium">Cart</th>
-                      <th className="px-4 py-3 font-medium">Contact</th>
-                      <th className="px-4 py-3 font-medium">Last Seen</th>
-                      <th className="px-4 py-3 font-medium">Action</th>
+                      <th className="px-2 py-2 font-medium">Visitor</th>
+                      <th className="px-2 py-2 font-medium">Type</th>
+                      <th className="px-2 py-2 font-medium">Intent</th>
+                      <th className="px-2 py-2 font-medium">Source</th>
+                      <th className="px-2 py-2 font-medium">Pages</th>
+                      <th className="px-2 py-2 font-medium">Cart</th>
+                      <th className="px-2 py-2 font-medium">Contact</th>
+                      <th className="px-2 py-2 font-medium">Last Seen</th>
+                      <th className="px-2 py-2 font-medium">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredVisitors.map((v) => (
                       <tr key={v.id} className="border-b border-border/50 hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3">
+                        <td className="px-2 py-2">
                           {v.customer_name ? (
                             <div className="font-semibold text-sm text-foreground">{v.customer_name}</div>
                           ) : (
@@ -318,7 +318,7 @@ export default function AdminPage() {
                           </div>
                           {v.ip && <div className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3" />{v.ip}</div>}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-2 py-2">
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.is_returning ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"}`}>
                             {v.is_returning ? `Return #${v.visit_count}` : "New"}
                           </span>
@@ -329,32 +329,32 @@ export default function AdminPage() {
                             </div>
                           ) : null}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-2 py-2">
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                             v.intent === "high" ? "bg-green-100 text-green-700" : v.intent === "medium" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
                           }`}>
                             {v.intent} ({v.intent_score})
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-xs text-gray-600">{v.source}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-2 py-2 text-xs text-gray-600">{v.source}</td>
+                        <td className="px-2 py-2">
                           <div className="text-xs text-gray-600">{v.page_views} pages</div>
                           <div className="text-[10px] text-gray-400">{v.time_on_site}s • {v.scroll_depth}% scroll</div>
                         </td>
-                        <td className="px-4 py-3 text-xs">
+                        <td className="px-2 py-2 text-xs">
                           {v.cart_items > 0 ? (
                             <span className="text-green-600 font-medium">{v.cart_items} items (₹{v.cart_value})</span>
                           ) : (
                             <span className="text-gray-400">—</span>
                           )}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-2 py-2">
                           {v.phone && <div className="text-xs text-green-600 flex items-center gap-1"><Phone className="w-3 h-3" />{v.phone}</div>}
                           {v.email && <div className="text-xs text-blue-600 flex items-center gap-1"><Mail className="w-3 h-3" />{v.email}</div>}
                           {!v.phone && !v.email && <span className="text-xs text-gray-400">Anonymous</span>}
                         </td>
-                        <td className="px-4 py-3 text-xs text-gray-500">{timeAgo(Number(v.last_seen))}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-2 py-2 text-xs text-gray-500">{timeAgo(Number(v.last_seen))}</td>
+                        <td className="px-2 py-2">
                           <button
                             onClick={() => fetchJourney(v.id)}
                             className="flex items-center gap-1 text-xs text-primary font-medium hover:underline"
@@ -506,42 +506,42 @@ export default function AdminPage() {
         {tab === "contacts" && (
           <div className="bg-card-bg rounded-xl border border-border overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead>
                   <tr className="text-left text-gray-500 border-b border-border bg-gray-50/50">
-                    <th className="px-4 py-3 font-medium">Phone</th>
-                    <th className="px-4 py-3 font-medium">Email</th>
-                    <th className="px-4 py-3 font-medium">WA Consent</th>
-                    <th className="px-4 py-3 font-medium">Method</th>
-                    <th className="px-4 py-3 font-medium">Intent</th>
-                    <th className="px-4 py-3 font-medium">Source</th>
-                    <th className="px-4 py-3 font-medium">Recommendation</th>
-                    <th className="px-4 py-3 font-medium">Captured</th>
-                    <th className="px-4 py-3 font-medium">Journey</th>
+                    <th className="px-2 py-2 font-medium">Phone</th>
+                    <th className="px-2 py-2 font-medium">Email</th>
+                    <th className="px-2 py-2 font-medium">WA Consent</th>
+                    <th className="px-2 py-2 font-medium">Method</th>
+                    <th className="px-2 py-2 font-medium">Intent</th>
+                    <th className="px-2 py-2 font-medium">Source</th>
+                    <th className="px-2 py-2 font-medium">Recommendation</th>
+                    <th className="px-2 py-2 font-medium">Captured</th>
+                    <th className="px-2 py-2 font-medium">Journey</th>
                   </tr>
                 </thead>
                 <tbody>
                   {contacts.map((c) => (
                     <tr key={c.id} className="border-b border-border/50 hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-green-600">{c.phone || "—"}</td>
-                      <td className="px-4 py-3 text-blue-600">{c.email || "—"}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-2 py-2 font-medium text-green-600">{c.phone || "—"}</td>
+                      <td className="px-2 py-2 text-blue-600">{c.email || "—"}</td>
+                      <td className="px-2 py-2">
                         {c.wa_consent ? (
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">✓ Consented</span>
                         ) : (
                           <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">✗ No consent</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-xs capitalize">{c.capture_method || "popup"}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-2 py-2 text-xs capitalize">{c.capture_method || "popup"}</td>
+                      <td className="px-2 py-2">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           c.intent === "high" ? "bg-green-100 text-green-700" : c.intent === "medium" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
                         }`}>{c.intent}</span>
                       </td>
-                      <td className="px-4 py-3 text-xs">{c.source}</td>
-                      <td className="px-4 py-3 text-xs text-purple-600">{c.recommendation || "—"}</td>
-                      <td className="px-4 py-3 text-xs text-gray-500">{c.created_at ? new Date(c.created_at).toLocaleString("en-IN") : "—"}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-2 py-2 text-xs">{c.source}</td>
+                      <td className="px-2 py-2 text-xs text-purple-600">{c.recommendation || "—"}</td>
+                      <td className="px-2 py-2 text-xs text-gray-500">{c.created_at ? new Date(c.created_at).toLocaleString("en-IN") : "—"}</td>
+                      <td className="px-2 py-2">
                         <button onClick={() => fetchJourney(c.visitor_id)} className="text-xs text-primary font-medium hover:underline flex items-center gap-1">
                           <Eye className="w-3.5 h-3.5" /> View
                         </button>
