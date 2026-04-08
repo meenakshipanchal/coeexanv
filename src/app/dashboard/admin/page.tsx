@@ -118,13 +118,19 @@ export default function AdminPage() {
     return false;
   };
 
-  // Real visitors (exclude bots by default unless "bots" filter selected)
-  const realVisitors = filterType === "bots" ? visitors.filter(isBot) : visitors.filter((v) => !isBot(v));
+  const nonBotVisitors = visitors.filter((v) => !isBot(v));
+  const botCount = visitors.filter(isBot).length;
 
-  const filteredVisitors = realVisitors.filter((v) => {
+  // Step 1: Apply source + intent + search filters (these are "drill-down" filters)
+  const baseFiltered = (filterType === "bots" ? visitors.filter(isBot) : nonBotVisitors).filter((v) => {
     if (search && !v.id.includes(search) && !v.fingerprint_id?.includes(search) && !v.ip?.includes(search) && !v.email?.includes(search) && !v.phone?.includes(search) && !v.customer_name?.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterIntent !== "all" && v.intent !== filterIntent) return false;
     if (filterSource !== "all" && v.source !== filterSource) return false;
+    return true;
+  });
+
+  // Step 2: Apply type filter on top
+  const filteredVisitors = baseFiltered.filter((v) => {
     if (filterType === "new" && v.is_returning) return false;
     if (filterType === "returning" && !v.is_returning) return false;
     if (filterType === "has_cart" && Number(v.cart_items) === 0) return false;
@@ -134,8 +140,6 @@ export default function AdminPage() {
   });
 
   const sources = [...new Set(visitors.map((v) => v.source))];
-  const nonBotVisitors = visitors.filter((v) => !isBot(v));
-  const botCount = visitors.filter(isBot).length;
 
   function timeAgo(ts: number) {
     const diff = Date.now() - ts;
@@ -203,12 +207,12 @@ export default function AdminPage() {
             {/* Quick Filter Tabs */}
             <div className="flex gap-2 flex-wrap">
               {[
-                { id: "all", label: "All Real", count: nonBotVisitors.length },
-                { id: "new", label: "New", count: nonBotVisitors.filter((v) => !v.is_returning).length },
-                { id: "returning", label: "Returning", count: nonBotVisitors.filter((v) => v.is_returning).length },
-                { id: "high_intent", label: "High Intent", count: nonBotVisitors.filter((v) => v.intent === "high").length },
-                { id: "has_cart", label: "Has Cart", count: nonBotVisitors.filter((v) => Number(v.cart_items) > 0).length },
-                { id: "shopify", label: "Shopify Login", count: nonBotVisitors.filter((v) => v.is_logged_in).length },
+                { id: "all", label: "All Real", count: baseFiltered.length },
+                { id: "new", label: "New", count: baseFiltered.filter((v) => !v.is_returning).length },
+                { id: "returning", label: "Returning", count: baseFiltered.filter((v) => v.is_returning).length },
+                { id: "high_intent", label: "High Intent", count: baseFiltered.filter((v) => v.intent === "high").length },
+                { id: "has_cart", label: "Has Cart", count: baseFiltered.filter((v) => Number(v.cart_items) > 0).length },
+                { id: "shopify", label: "Shopify Login", count: baseFiltered.filter((v) => v.is_logged_in).length },
                 { id: "bots", label: "Bots", count: botCount },
               ].map((f) => (
                 <button
@@ -248,32 +252,32 @@ export default function AdminPage() {
               </select>
             </div>
 
-            {/* Stats — based on current filter */}
+            {/* Stats — counts change based on source/intent/search dropdown filters */}
             <div className="grid grid-cols-7 gap-3">
               <div className={`bg-card-bg rounded-xl border p-3 cursor-pointer transition-all ${filterType === "all" ? "border-primary shadow-sm" : "border-border"}`} onClick={() => setFilterType("all")}>
-                <p className="text-[10px] text-gray-500">Real Visitors</p>
-                <p className="text-lg font-bold">{nonBotVisitors.length}</p>
+                <p className="text-[10px] text-gray-500">All Real</p>
+                <p className="text-lg font-bold">{baseFiltered.length}</p>
               </div>
               <div className={`bg-card-bg rounded-xl border p-3 cursor-pointer transition-all ${filterType === "new" ? "border-emerald-500 shadow-sm" : "border-border"}`} onClick={() => setFilterType("new")}>
                 <p className="text-[10px] text-gray-500">New</p>
-                <p className="text-lg font-bold text-emerald-600">{nonBotVisitors.filter((v) => !v.is_returning).length}</p>
+                <p className="text-lg font-bold text-emerald-600">{baseFiltered.filter((v) => !v.is_returning).length}</p>
               </div>
               <div className={`bg-card-bg rounded-xl border p-3 cursor-pointer transition-all ${filterType === "returning" ? "border-blue-500 shadow-sm" : "border-border"}`} onClick={() => setFilterType("returning")}>
                 <p className="text-[10px] text-gray-500">Returning</p>
-                <p className="text-lg font-bold text-blue-600">{nonBotVisitors.filter((v) => v.is_returning).length}</p>
+                <p className="text-lg font-bold text-blue-600">{baseFiltered.filter((v) => v.is_returning).length}</p>
               </div>
               <div className={`bg-card-bg rounded-xl border p-3 cursor-pointer transition-all ${filterType === "high_intent" ? "border-green-500 shadow-sm" : "border-border"}`} onClick={() => setFilterType("high_intent")}>
                 <p className="text-[10px] text-gray-500">High Intent</p>
-                <p className="text-lg font-bold text-green-600">{nonBotVisitors.filter((v) => v.intent === "high").length}</p>
+                <p className="text-lg font-bold text-green-600">{baseFiltered.filter((v) => v.intent === "high").length}</p>
               </div>
               <div className={`bg-card-bg rounded-xl border p-3 cursor-pointer transition-all ${filterType === "has_cart" ? "border-amber-500 shadow-sm" : "border-border"}`} onClick={() => setFilterType("has_cart")}>
                 <p className="text-[10px] text-gray-500">Has Cart</p>
-                <p className="text-lg font-bold text-amber-600">{nonBotVisitors.filter((v) => Number(v.cart_items) > 0).length}</p>
-                <p className="text-[9px] text-gray-400">₹{nonBotVisitors.filter((v) => Number(v.cart_items) > 0).reduce((s, v) => s + Number(v.cart_value), 0).toLocaleString()}</p>
+                <p className="text-lg font-bold text-amber-600">{baseFiltered.filter((v) => Number(v.cart_items) > 0).length}</p>
+                <p className="text-[9px] text-gray-400">₹{baseFiltered.filter((v) => Number(v.cart_items) > 0).reduce((s, v) => s + Number(v.cart_value), 0).toLocaleString()}</p>
               </div>
               <div className={`bg-card-bg rounded-xl border p-3 cursor-pointer transition-all ${filterType === "shopify" ? "border-amber-500 shadow-sm" : "border-border"}`} onClick={() => setFilterType("shopify")}>
                 <p className="text-[10px] text-gray-500">Shopify</p>
-                <p className="text-lg font-bold text-amber-600">{nonBotVisitors.filter((v) => v.is_logged_in).length}</p>
+                <p className="text-lg font-bold text-amber-600">{baseFiltered.filter((v) => v.is_logged_in).length}</p>
               </div>
               <div className={`bg-card-bg rounded-xl border p-3 cursor-pointer transition-all ${filterType === "bots" ? "border-red-500 shadow-sm" : "border-border"}`} onClick={() => setFilterType("bots")}>
                 <p className="text-[10px] text-gray-500">Bots</p>
