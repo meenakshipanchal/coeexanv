@@ -72,6 +72,7 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const [filterIntent, setFilterIntent] = useState("all");
   const [filterSource, setFilterSource] = useState("all");
+  const [filterType, setFilterType] = useState("all"); // all, new, returning, has_cart, high_intent, shopify, bots
   const [loading, setLoading] = useState(false);
 
   const fetchVisitors = useCallback(async () => {
@@ -109,14 +110,32 @@ export default function AdminPage() {
     return () => clearInterval(interval);
   }, [fetchVisitors, fetchContacts]);
 
-  const filteredVisitors = visitors.filter((v) => {
-    if (search && !v.id.includes(search) && !v.fingerprint_id?.includes(search) && !v.ip?.includes(search) && !v.email?.includes(search) && !v.phone?.includes(search)) return false;
+  // Identify bots: known bot IPs or zero engagement with 0s time
+  const isBot = (v: Visitor) => {
+    const botIps = ["66.249.", "64.233.", "72.14.", "209.85.", "40.77.", "157.55.", "207.46."];
+    if (botIps.some((prefix) => v.ip?.startsWith(prefix))) return true;
+    if (v.time_on_site === 0 && v.scroll_depth === 0 && v.click_count === 0 && v.page_views <= 1 && Number(v.confidence) >= 0.7) return true;
+    return false;
+  };
+
+  // Real visitors (exclude bots by default unless "bots" filter selected)
+  const realVisitors = filterType === "bots" ? visitors.filter(isBot) : visitors.filter((v) => !isBot(v));
+
+  const filteredVisitors = realVisitors.filter((v) => {
+    if (search && !v.id.includes(search) && !v.fingerprint_id?.includes(search) && !v.ip?.includes(search) && !v.email?.includes(search) && !v.phone?.includes(search) && !v.customer_name?.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterIntent !== "all" && v.intent !== filterIntent) return false;
     if (filterSource !== "all" && v.source !== filterSource) return false;
+    if (filterType === "new" && v.is_returning) return false;
+    if (filterType === "returning" && !v.is_returning) return false;
+    if (filterType === "has_cart" && Number(v.cart_items) === 0) return false;
+    if (filterType === "high_intent" && v.intent !== "high") return false;
+    if (filterType === "shopify" && !v.is_logged_in) return false;
     return true;
   });
 
   const sources = [...new Set(visitors.map((v) => v.source))];
+  const nonBotVisitors = visitors.filter((v) => !isBot(v));
+  const botCount = visitors.filter(isBot).length;
 
   function timeAgo(ts: number) {
     const diff = Date.now() - ts;
@@ -181,22 +200,47 @@ export default function AdminPage() {
         {/* ─── Visitors Tab ─── */}
         {tab === "visitors" && (
           <>
-            {/* Filters */}
+            {/* Quick Filter Tabs */}
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { id: "all", label: "All Real", count: nonBotVisitors.length },
+                { id: "new", label: "New", count: nonBotVisitors.filter((v) => !v.is_returning).length },
+                { id: "returning", label: "Returning", count: nonBotVisitors.filter((v) => v.is_returning).length },
+                { id: "high_intent", label: "High Intent", count: nonBotVisitors.filter((v) => v.intent === "high").length },
+                { id: "has_cart", label: "Has Cart", count: nonBotVisitors.filter((v) => Number(v.cart_items) > 0).length },
+                { id: "shopify", label: "Shopify Login", count: nonBotVisitors.filter((v) => v.is_logged_in).length },
+                { id: "bots", label: "Bots", count: botCount },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setFilterType(f.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    filterType === f.id
+                      ? f.id === "bots" ? "bg-red-500 text-white" : "bg-primary text-white"
+                      : f.id === "bots" ? "bg-red-50 text-red-600 hover:bg-red-100" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {f.label} ({f.count})
+                </button>
+              ))}
+            </div>
+
+            {/* Search + Filters */}
             <div className="flex gap-3 items-center">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by ID, fingerprint, IP, email, phone..."
+                  placeholder="Search by name, ID, fingerprint, IP, email, phone..."
                   className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg text-sm bg-card-bg"
                 />
               </div>
               <select value={filterIntent} onChange={(e) => setFilterIntent(e.target.value)} className="border border-border rounded-lg px-3 py-2.5 text-sm bg-card-bg">
                 <option value="all">All Intent</option>
-                <option value="low">🔴 Low</option>
-                <option value="medium">🟡 Medium</option>
-                <option value="high">🟢 High</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
               </select>
               <select value={filterSource} onChange={(e) => setFilterSource(e.target.value)} className="border border-border rounded-lg px-3 py-2.5 text-sm bg-card-bg">
                 <option value="all">All Sources</option>
@@ -204,27 +248,37 @@ export default function AdminPage() {
               </select>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-5 gap-3">
-              <div className="bg-card-bg rounded-xl border border-border p-4">
-                <p className="text-xs text-gray-500">Total</p>
-                <p className="text-xl font-bold">{visitors.length}</p>
+            {/* Stats — based on current filter */}
+            <div className="grid grid-cols-7 gap-3">
+              <div className={`bg-card-bg rounded-xl border p-3 cursor-pointer transition-all ${filterType === "all" ? "border-primary shadow-sm" : "border-border"}`} onClick={() => setFilterType("all")}>
+                <p className="text-[10px] text-gray-500">Real Visitors</p>
+                <p className="text-lg font-bold">{nonBotVisitors.length}</p>
               </div>
-              <div className="bg-card-bg rounded-xl border border-border p-4">
-                <p className="text-xs text-gray-500">New</p>
-                <p className="text-xl font-bold text-emerald-600">{visitors.filter((v) => !v.is_returning).length}</p>
+              <div className={`bg-card-bg rounded-xl border p-3 cursor-pointer transition-all ${filterType === "new" ? "border-emerald-500 shadow-sm" : "border-border"}`} onClick={() => setFilterType("new")}>
+                <p className="text-[10px] text-gray-500">New</p>
+                <p className="text-lg font-bold text-emerald-600">{nonBotVisitors.filter((v) => !v.is_returning).length}</p>
               </div>
-              <div className="bg-card-bg rounded-xl border border-border p-4">
-                <p className="text-xs text-gray-500">Returning</p>
-                <p className="text-xl font-bold text-blue-600">{visitors.filter((v) => v.is_returning).length}</p>
+              <div className={`bg-card-bg rounded-xl border p-3 cursor-pointer transition-all ${filterType === "returning" ? "border-blue-500 shadow-sm" : "border-border"}`} onClick={() => setFilterType("returning")}>
+                <p className="text-[10px] text-gray-500">Returning</p>
+                <p className="text-lg font-bold text-blue-600">{nonBotVisitors.filter((v) => v.is_returning).length}</p>
               </div>
-              <div className="bg-card-bg rounded-xl border border-border p-4">
-                <p className="text-xs text-gray-500">High Intent</p>
-                <p className="text-xl font-bold text-green-600">{visitors.filter((v) => v.intent === "high").length}</p>
+              <div className={`bg-card-bg rounded-xl border p-3 cursor-pointer transition-all ${filterType === "high_intent" ? "border-green-500 shadow-sm" : "border-border"}`} onClick={() => setFilterType("high_intent")}>
+                <p className="text-[10px] text-gray-500">High Intent</p>
+                <p className="text-lg font-bold text-green-600">{nonBotVisitors.filter((v) => v.intent === "high").length}</p>
               </div>
-              <div className="bg-card-bg rounded-xl border border-border p-4">
-                <p className="text-xs text-gray-500">Converted</p>
-                <p className="text-xl font-bold text-primary">{visitors.filter((v) => v.converted).length}</p>
+              <div className={`bg-card-bg rounded-xl border p-3 cursor-pointer transition-all ${filterType === "has_cart" ? "border-amber-500 shadow-sm" : "border-border"}`} onClick={() => setFilterType("has_cart")}>
+                <p className="text-[10px] text-gray-500">Has Cart</p>
+                <p className="text-lg font-bold text-amber-600">{nonBotVisitors.filter((v) => Number(v.cart_items) > 0).length}</p>
+                <p className="text-[9px] text-gray-400">₹{nonBotVisitors.filter((v) => Number(v.cart_items) > 0).reduce((s, v) => s + Number(v.cart_value), 0).toLocaleString()}</p>
+              </div>
+              <div className={`bg-card-bg rounded-xl border p-3 cursor-pointer transition-all ${filterType === "shopify" ? "border-amber-500 shadow-sm" : "border-border"}`} onClick={() => setFilterType("shopify")}>
+                <p className="text-[10px] text-gray-500">Shopify</p>
+                <p className="text-lg font-bold text-amber-600">{nonBotVisitors.filter((v) => v.is_logged_in).length}</p>
+              </div>
+              <div className={`bg-card-bg rounded-xl border p-3 cursor-pointer transition-all ${filterType === "bots" ? "border-red-500 shadow-sm" : "border-border"}`} onClick={() => setFilterType("bots")}>
+                <p className="text-[10px] text-gray-500">Bots</p>
+                <p className="text-lg font-bold text-red-500">{botCount}</p>
+                <p className="text-[9px] text-gray-400">filtered out</p>
               </div>
             </div>
 
